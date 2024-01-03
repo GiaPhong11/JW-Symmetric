@@ -27,17 +27,7 @@ public class SecurityConfig {
     private JwtAuthFilter jwtAuthFilter;
 
     @Bean
-    //authentication
     public UserDetailsService userDetailsService() {
-//        UserDetails admin = User.withUsername("Mythh11")
-//                .password(encoder.encode("Test@1234"))
-//                .roles("ADMIN")
-//                .build();
-//        UserDetails user = User.withUsername("Test")
-//                .password(encoder.encode("123123"))
-//                .roles("USER","ADMIN","HR")
-//                .build();
-//        return new InMemoryUserDetailsManager(admin, user);
         return new UserInfoUserDetailsService();
     }
 
@@ -46,9 +36,8 @@ public class SecurityConfig {
         return http.csrf().disable()
                 .authorizeHttpRequests()
                 .requestMatchers("/products/login","/products/signUp","/products/refreshToken").permitAll()
-                .and()
-                .authorizeHttpRequests().requestMatchers("/products/**")
-                .authenticated().and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and().authorizeHttpRequests().requestMatchers("/products/**").authenticated()
+                .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and().authenticationProvider(authenticationProvider()).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class).build();
     }
 

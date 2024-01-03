@@ -5,10 +5,18 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Controller;
 
-import java.security.Key;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +25,33 @@ import java.util.function.Function;
 @Component
 public class JwtService {
 
-    private static final String SECRET = "5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437";
+    @Value("${security.jwt.private-key}")
+    private String privateKeyBase64;
+
+    @Value("${security.jwt.public-key}")
+    private String publicKeyBase64;
+
+    private PrivateKey privateKey;
+
+    private PublicKey publicKey;
+
+    @PostConstruct
+    public void init() throws NoSuchAlgorithmException, InvalidKeySpecException {
+        this.privateKey = generatePrivateKey();
+        this.publicKey = generatePublicKey();
+    }
+
+    private PrivateKey generatePrivateKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
+        final byte[] privateKeyRaw = Base64.getDecoder().decode(privateKeyBase64);
+        final PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyRaw);
+        return KeyFactory.getInstance("RSA").generatePrivate(privateKeySpec);
+    }
+
+    private PublicKey generatePublicKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
+        final byte[] publicKeyRaw = Base64.getDecoder().decode(publicKeyBase64);
+        final X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyRaw);
+        return KeyFactory.getInstance("RSA").generatePublic(publicKeySpec);
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -35,7 +69,7 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
-                .setSigningKey(getSignKey())
+                .setSigningKey(publicKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -62,11 +96,6 @@ public class JwtService {
                 .setSubject(userName)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis()+ 1000 * 60 * 2))
-                .signWith(getSignKey(), SignatureAlgorithm.HS256).compact();
-    }
-
-    private Key getSignKey() {
-        byte[] keyBytes= Decoders.BASE64.decode(SECRET);
-        return Keys.hmacShaKeyFor(keyBytes);
+                .signWith(privateKey, SignatureAlgorithm.RS256).compact();
     }
 }

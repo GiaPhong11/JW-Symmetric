@@ -35,9 +35,7 @@ public class ProductController {
     private AuthenticationManager authenticationManager;
 
     @GetMapping("/welcome")
-    public String welcome() {
-        return "Welcome";
-    }
+    public String welcome() {return "Welcome";}
 
     @PostMapping("/signUp")
     public String addNewUser(@RequestBody UserInfo userInfo){
